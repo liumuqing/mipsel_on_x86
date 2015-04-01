@@ -26,7 +26,7 @@ void ElfLoader::load(const char * file_path)
 		{
 			//align
 			uint64_t v_page_addr = pseg->get_virtual_address() - (pseg->get_virtual_address() & (COMMON_PAGE_SIZE-1));
-			uint64_t v_page_size = pseg->get_memory_size() + (pseg->get_virtual_address() - v_page_addr);
+			uint64_t v_page_size = ((((pseg->get_memory_size() + (pseg->get_virtual_address() - v_page_addr)) - 1) | (COMMON_PAGE_SIZE - 1))) + 1;
 
 			if (v_page_addr != (uint64_t)mmap((void *)v_page_addr, v_page_size ,PROT_WRITE|PROT_READ, MAP_FIXED|MAP_ANONYMOUS|MAP_SHARED, -1, 0)) 
 				ERROR("can't mmap at 0x%08llx with size 0x%08llx", v_page_addr, v_page_size);

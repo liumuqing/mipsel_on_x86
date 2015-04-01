@@ -2,6 +2,7 @@
 /* NOTE: never modifiy any instance variable after initialized...
  * as we need support multithread..
  * */
+#include <map>
 #include "common.h"
 #include "Instruction.h"
 #include "Disassembler.h"
@@ -20,6 +21,7 @@ public:
 
 	uint_t _regs[MIPS_REG_ENDING+1];
 private:
+	std::map<uint_t, Instruction *> _inst_cache;
 	MipsDisassembler _disassembler;
 
 	Cpu(const Cpu& cpu);

@@ -15,6 +15,9 @@ ElfLoader loader;
 std::unordered_map<uint_t, std::string> got_trans_map;
 Cpu cpu;
 uint_t host_stack_highest;
+Instruction ** inst_cache;
+size_t inst_cache_base;
+size_t inst_cache_size;
 
 uint_t create_fake_stack(int argc, char ** argv, char **env, uint_t stack_size = 0x10000)
 {
@@ -88,7 +91,10 @@ void simulation_loop(Cpu& cpu)
 		}
 		if (i == loader._MAPs.size()) return;
 		//TODO check whethet PC is excutable
-		Instruction inst = cpu.fetch(cpu._regs[MIPS_REG_PC]);
+		ASSERT(cpu._regs[MIPS_REG_PC] % 4 == 0);
+		if (!inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4])
+			inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4] = new Instruction(cpu.fetch(cpu._regs[MIPS_REG_PC]));
+		const Instruction& inst = *inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4];
 		switch (inst.type)
 		{
 		case MIPS_INS_J:
@@ -126,7 +132,10 @@ void simulation_loop(Cpu& cpu)
 							cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
 							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
 				}
-				Instruction nextinst = cpu.fetch(old_PC + 4);
+				ASSERT((old_PC+4)% 4 == 0);
+				if (!inst_cache[(old_PC + 4 - inst_cache_base)/4])
+					inst_cache[(old_PC + 4 - inst_cache_base)/4] = new Instruction(cpu.fetch(old_PC + 4));
+				const Instruction& nextinst = *inst_cache[(old_PC + 4 - inst_cache_base)/4];
 				cpu._regs[MIPS_REG_PC] = old_PC + 4;
 				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(nextinst));
 				cpu.execute(nextinst);
@@ -336,6 +345,30 @@ int main(int argc, char ** argv, char ** env)
 			*(uint_t *) loader.OBJECTs[i].addr = (uint_t)symbol;
 		}
 	}
+
+	uint_t lower_address = 0xffffffff;
+	uint_t upper_address = 0;
+	for (uint_t i = 0; i < loader._MAPs.size(); i++)
+	{
+		uint_t base = loader._MAPs[i].addr;
+		uint_t size = loader._MAPs[i].size;
+		uint_t prot = loader._MAPs[i].prot;
+
+		if (prot & PROT_EXEC)
+		{
+			if (lower_address > base) lower_address = base;
+			if (upper_address < base + size) upper_address = base + size;
+		}
+	}
+	if (lower_address < upper_address)
+	{
+		inst_cache_base = lower_address;
+		inst_cache_size = (upper_address + 3 - lower_address)/4;
+		inst_cache = (Instruction **)malloc(inst_cache_size * sizeof(Instruction*));
+		if (inst_cache == nullptr) ERROR("can not malloc inst_cache");
+		memset(inst_cache, 0, inst_cache_size * 4);
+	}
+
 	INFO("LOAD OBJECTS finish");
 	INFO("start simulation!!!!");
 	start_simulate();

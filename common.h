@@ -1,11 +1,15 @@
 #pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
 #define ERROR(fmt, ...) (printf("[ERROR]" fmt "\n", ##__VA_ARGS__), exit(1))
-//#define INFO(fmt, ...) printf("[INFO]" fmt "\n", ##__VA_ARGS__)
-#define INFO(fmt, ...) 
+#ifdef DEBUG
+	#define INFO(fmt, ...) printf("[INFO]" fmt "\n", ##__VA_ARGS__)
+#else
+	#define INFO(fmt, ...) 
+#endif
 #define WARNING(fmt, ...) printf("[WARNING]" fmt "\n", ##__VA_ARGS__)
 #define DEBUG(fmt, ...) printf("[DEBUG]" fmt "\n", ##__VA_ARGS__)
 #define ASSERT(cond) if (!(cond)) (printf("[ASSERT] %s", #cond), exit(1))

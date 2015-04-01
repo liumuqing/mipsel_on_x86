@@ -11,7 +11,7 @@ Cpu::Cpu()
 		_regs[i] = 0;
 	}
 }
-Instruction Cpu::fetch()
+inline Instruction Cpu::fetch()
 {
 	return fetch(_regs[MIPS_REG_PC]);
 }

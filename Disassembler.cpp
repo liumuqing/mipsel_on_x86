@@ -45,6 +45,7 @@ Instruction MipsDisassembler::disassemble(const uint8_t * code_buf, uint_t offse
 	retv.buf = code_buf;
 #endif
 	memcpy(retv.operands, all_insn->detail->mips.operands, retv.op_count * sizeof(retv.operands[0]));
+	cs_free(all_insn, count);
 	return retv;
 }
 MipsDisassembler::~MipsDisassembler()
