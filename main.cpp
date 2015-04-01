@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <vector>
 #include <unordered_map>
@@ -64,8 +65,11 @@ uint_t create_fake_stack(int argc, char ** argv, char **env, uint_t stack_size =
 	stack -= 4;
 	*(uint_t *) stack = 0xbffffffc;
 	stack -= 12;
+
+	*(uint_t *) (stack-=4) = (uint_t) nullptr;
 	for (;count_env--;)
 		*(uint_t *) (stack-=4) = (uint_t) env[count_env];
+	*(uint_t *) (stack-=4) = (uint_t) nullptr;
 	for (;count_argv--;)
 		*(uint_t *) (stack-=4) = (uint_t) argv[count_argv];
 	*(uint_t *) (stack-=4) = (uint_t) argc;
@@ -104,8 +108,26 @@ void simulation_loop(Cpu& cpu)
 		case MIPS_INS_B:
 			{
 				uint_t old_PC = cpu._regs[MIPS_REG_PC];
-				Instruction nextinst = cpu.fetch(cpu._regs[MIPS_REG_PC] + 4);
-				cpu._regs[MIPS_REG_PC] += 4;
+				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
+				cpu.execute(inst);
+				uint_t new_PC = cpu._regs[MIPS_REG_PC];
+				if (inst.op_count)
+				{
+					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+							cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
+							cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
+					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+							cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
+							cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
+					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+							cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
+							cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
+					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+							cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
+							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
+				}
+				Instruction nextinst = cpu.fetch(old_PC + 4);
+				cpu._regs[MIPS_REG_PC] = old_PC + 4;
 				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(nextinst));
 				cpu.execute(nextinst);
 				if (nextinst.op_count)
@@ -124,24 +146,8 @@ void simulation_loop(Cpu& cpu)
 							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
 				}
 
-				cpu._regs[MIPS_REG_PC] = old_PC;
-				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
-				cpu.execute(inst);
-				if (inst.op_count)
-				{
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
-							cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
-							cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
-							cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
-							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
-				}
+				cpu._regs[MIPS_REG_PC] = new_PC;
+
 			}
 			break;
 		default:
@@ -178,7 +184,8 @@ void start_simulate()
 		{
 			if (got_trans_map[cpu._regs[MIPS_REG_PC]] == "exit")
 			{
-				exit(cpu._regs[MIPS_REG_A0]);
+				INFO("HOOKED exit");
+				_exit(cpu._regs[MIPS_REG_A0]);
 			}
 			INFO("prepare to go into x86 library to addr 0x%08x", cpu._regs[MIPS_REG_PC]);
 			uint_t _func = cpu._regs[MIPS_REG_PC];
@@ -286,6 +293,7 @@ void * load_symbol(const char *name, const std::vector<std::string> libraries)
 
 int main(int argc, char ** argv, char ** env)
 {
+	setbuf(stdout, nullptr);
 	for (host_stack_highest = (uint_t)&env[0]; *(uint_t *)host_stack_highest; host_stack_highest += 4);
 
 
@@ -314,6 +322,7 @@ int main(int argc, char ** argv, char ** env)
 		{
 			*(uint_t*) loader.FUNCs[i].addr = (uint_t) trans_addr;
 			got_trans_map[(uint_t)trans_addr] = loader.FUNCs[i].name;
+			INFO("[LOAD FUNC] addr:%08x value:%08x %s", loader.FUNCs[i].addr, (uint_t)trans_addr, loader.FUNCs[i].name.c_str());
 		}
 	}
 	INFO("LOAD FUNC finish");
