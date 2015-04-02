@@ -11,7 +11,6 @@
 	#define INFO(fmt, ...) 
 #endif
 #define WARNING(fmt, ...) printf("[WARNING]" fmt "\n", ##__VA_ARGS__)
-#define DEBUG(fmt, ...) printf("[DEBUG]" fmt "\n", ##__VA_ARGS__)
 #define ASSERT(cond) if (!(cond)) (printf("[ASSERT] %s", #cond), exit(1))
 
 //TODO:try make fast?

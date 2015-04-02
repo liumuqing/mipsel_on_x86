@@ -95,91 +95,74 @@ void simulation_loop(Cpu& cpu)
 		if (!inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4])
 			inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4] = new Instruction(cpu.fetch(cpu._regs[MIPS_REG_PC]));
 		const Instruction& inst = *inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4];
-		switch (inst.type)
+		if (inst.type >= INS_BEQ && inst.type<=INS_JAL)
 		{
-		case MIPS_INS_J:
-		case MIPS_INS_JAL:
-		case MIPS_INS_JALR:
-		case MIPS_INS_JR:
-		
-		case MIPS_INS_BAL:
-		case MIPS_INS_BEQ:
-		case MIPS_INS_BNE:
-		case MIPS_INS_BEQZ:
-		case MIPS_INS_BNEZ:
-		case MIPS_INS_BLEZ:
-		case MIPS_INS_BLTZ:
-		case MIPS_INS_BGEZ:
-		case MIPS_INS_BGTZ:
-		case MIPS_INS_B:
+			uint_t old_PC = cpu._regs[MIPS_REG_PC];
+			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
+			cpu.execute(inst);
+			uint_t new_PC = cpu._regs[MIPS_REG_PC];
+			if (inst.op_count)
 			{
-				uint_t old_PC = cpu._regs[MIPS_REG_PC];
-				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
-				cpu.execute(inst);
-				uint_t new_PC = cpu._regs[MIPS_REG_PC];
-				if (inst.op_count)
-				{
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
-							cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
-							cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
-							cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
-							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
-				}
-				ASSERT((old_PC+4)% 4 == 0);
-				if (!inst_cache[(old_PC + 4 - inst_cache_base)/4])
-					inst_cache[(old_PC + 4 - inst_cache_base)/4] = new Instruction(cpu.fetch(old_PC + 4));
-				const Instruction& nextinst = *inst_cache[(old_PC + 4 - inst_cache_base)/4];
-				cpu._regs[MIPS_REG_PC] = old_PC + 4;
-				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(nextinst));
-				cpu.execute(nextinst);
-				if (nextinst.op_count)
-				{
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
-							cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
-							cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
-							cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
-							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
-				}
-
-				cpu._regs[MIPS_REG_PC] = new_PC;
-
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
+						cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
+						cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
+						cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
+						cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
 			}
-			break;
-		default:
+			ASSERT((old_PC+4)% 4 == 0);
+			if (!inst_cache[(old_PC + 4 - inst_cache_base)/4])
+				inst_cache[(old_PC + 4 - inst_cache_base)/4] = new Instruction(cpu.fetch(old_PC + 4));
+			const Instruction& nextinst = *inst_cache[(old_PC + 4 - inst_cache_base)/4];
+			cpu._regs[MIPS_REG_PC] = old_PC + 4;
+			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(nextinst));
+
+			cpu.execute(nextinst);
+
+			if (nextinst.op_count)
 			{
-				INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
-				cpu.execute(inst);
-				if (inst.op_count)
-				{
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
-							cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
-							cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
-							cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
-					INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
-							cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
-							cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
-				}
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
+						cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
+						cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
+						cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
+						cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
 			}
-			break;
+
+			cpu._regs[MIPS_REG_PC] = new_PC;
+
+		}
+		else
+		{
+			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
+			cpu.execute(inst);
+			if (inst.op_count)
+			{
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
+						cpu._regs[5], cpu._regs[6], cpu._regs[7], cpu._regs[8]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[9], cpu._regs[10], cpu._regs[11], cpu._regs[12],
+						cpu._regs[13], cpu._regs[14], cpu._regs[15], cpu._regs[16]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[17], cpu._regs[18], cpu._regs[19], cpu._regs[20],
+						cpu._regs[21], cpu._regs[22], cpu._regs[23], cpu._regs[24]);
+				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
+						cpu._regs[25], cpu._regs[26], cpu._regs[27], cpu._regs[28],
+						cpu._regs[29], cpu._regs[30], cpu._regs[31], cpu._regs[32]);
+			}
 		}
 
 	}
@@ -194,6 +177,7 @@ void start_simulate()
 			if (got_trans_map[cpu._regs[MIPS_REG_PC]] == "exit")
 			{
 				INFO("HOOKED exit");
+				INFO("total execute: 0x%x %d\n", cpu._icount, cpu._icount);
 				_exit(cpu._regs[MIPS_REG_A0]);
 			}
 			INFO("prepare to go into x86 library to addr 0x%08x", cpu._regs[MIPS_REG_PC]);
