@@ -37,3 +37,41 @@ private:
 	Cpu(const Cpu& cpu);
 };
 
+template <typename T>
+void Cpu::writeOperand(const cs_mips_op& operand, T value)
+{
+	switch (operand.type)
+	{
+		case MIPS_OP_REG:
+			*(T*)&_regs[operand.reg] = value;
+			break;
+		case MIPS_OP_IMM:
+			ERROR("try to store a value to IMM operand");
+			break;
+		case MIPS_OP_MEM:
+			store(_regs[operand.mem.base] + operand.mem.disp, sizeof(T), (const uint8_t *)&value);
+			break;
+		default:
+			ERROR("Unkonw operand type:%d", operand.type);
+	}
+}
+template <typename T>
+T Cpu::readOperand(const cs_mips_op& operand)
+{
+	switch (operand.type)
+	{
+	case MIPS_OP_REG:
+		return *(T*)&_regs[operand.reg];
+	case MIPS_OP_IMM:
+		return operand.imm;
+	case MIPS_OP_MEM:
+		{
+			T retv = T();//retv must be initialize as zero
+			ASSERT(sizeof(T)>0);
+			load(_regs[operand.mem.base] + (uint_t)operand.mem.disp, sizeof(T), (uint8_t *)&retv);
+			return retv;
+		}
+	default:
+		ERROR("Unkonw operand type:%d", operand.type);
+	}
+}

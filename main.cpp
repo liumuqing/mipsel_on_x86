@@ -101,7 +101,8 @@ void simulation_loop(Cpu& cpu)
 			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
 			cpu.execute(inst);
 			uint_t new_PC = cpu._regs[MIPS_REG_PC];
-			if (inst.op_count)
+			if (inst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(inst.operands[0]));
+			if (true)
 			{
 				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
 						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
@@ -124,8 +125,9 @@ void simulation_loop(Cpu& cpu)
 			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(nextinst));
 
 			cpu.execute(nextinst);
+			if (nextinst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(nextinst.operands[0]));
 
-			if (nextinst.op_count)
+			if (true)
 			{
 				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
 						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
@@ -147,8 +149,16 @@ void simulation_loop(Cpu& cpu)
 		else
 		{
 			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
+			if (cpu._regs[MIPS_REG_PC] == 0x00413488)
+			{
+				//printf("break!!!");
+				//char buf[1024];
+				//gets(buf);
+				;
+			}
 			cpu.execute(inst);
-			if (inst.op_count)
+			if (inst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(inst.operands[0]));
+			if (true)
 			{
 				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
 						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],

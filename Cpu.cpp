@@ -39,43 +39,6 @@ void Cpu::execute(const Instruction& inst)
 	if (!instruction_handles[inst.type]) ERROR("havent bind InstructionType:0x%04x(%04d) %s", inst.type, inst.type, str_of_instruction(inst));
 	((void (*)(Cpu& cpu, const cs_mips_op *))(instruction_handles[inst.type]))(*this, inst.operands);
 }
-template <typename T>
-void Cpu::writeOperand(const cs_mips_op& operand, T value)
-{
-	switch (operand.type)
-	{
-		case MIPS_OP_REG:
-			*(T*)&_regs[operand.reg] = value;
-			break;
-		case MIPS_OP_IMM:
-			ERROR("try to store a value to IMM operand");
-			break;
-		case MIPS_OP_MEM:
-			store(_regs[operand.mem.base] + operand.mem.disp, sizeof(T), (const uint8_t *)&value);
-			break;
-		default:
-			ERROR("Unkonw operand type:%d", operand.type);
-	}
-}
-template <typename T>
-T Cpu::readOperand(const cs_mips_op& operand)
-{
-	switch (operand.type)
-	{
-	case MIPS_OP_REG:
-		return *(T*)&_regs[operand.reg];
-	case MIPS_OP_IMM:
-		return operand.imm;
-	case MIPS_OP_MEM:
-		{
-			T retv = T();//retv must be initialize as zero
-			load(_regs[operand.mem.base] + (uint_t)operand.mem.disp, sizeof(T), (uint8_t *)&retv);
-			return retv;
-		}
-	default:
-		ERROR("Unkonw operand type:%d", operand.type);
-	}
-}
 
 
 
@@ -103,8 +66,8 @@ void Cpu::store(uint_t addr, size_t len, const uint8_t* buf)
 #define WRITED(i, v) ({auto t = v; cpu.writeOperand<double>(operands[i], reinterpret_cast<double&>(t));})
 #define WRITE(i, v) ({auto t = v; cpu.writeOperand<int32_t>(operands[i], reinterpret_cast<int32_t>(t));})
 #define WRITEL(i, v) ({auto t = v; cpu.writeOperand<uint64_t>(operands[i], reinterpret_cast<uint64_t>(t));})
-#define WRITEU(i, v) ({auto t = v; cpu.writeOperand<int32_t>(operands[i], reinterpret_cast<uint32_t>(t));})
-#define WRITEUL(i, v) ({auto t = v; cpu.writeOperand<int64_t>(operands[i], reinterpret_cast<uint64_t>(t));})
+#define WRITEU(i, v) ({auto t = v; cpu.writeOperand<uint32_t>(operands[i], reinterpret_cast<uint32_t>(t));})
+#define WRITEUL(i, v) ({auto t = v; cpu.writeOperand<uint64_t>(operands[i], reinterpret_cast<uint64_t>(t));})
 /*
 #define WRITES(i, v) cpu.writeOperand<double>(operands[i], (v))
 #define WRITED(i, v) cpu.writeOperand<double>(operands[i], (v))
@@ -165,7 +128,7 @@ DEFINE(DIVU)
 }
 DEFINE(LW){WRITE(0, READ(1)); cpu._regs[MIPS_REG_PC] += 4; }
 DEFINE(LH){WRITE(0, ((int32_t)READ_2(1))<<16>>16); cpu._regs[MIPS_REG_PC] += 4;}
-DEFINE(LHU){WRITEU(0, (uint32_t)READU_2(1)); cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(LHU){WRITEU(0, (uint32_t)READU_2(1)&0xffff); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(LB){WRITE(0, ((int32_t)READ_1(1))<<24>>24); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(LBU){WRITEU(0, (uint32_t)READU_1(1)); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(SW){WRITE(1, READ(0)); cpu._regs[MIPS_REG_PC] += 4;}
@@ -223,67 +186,67 @@ void Cpu::instruction_handles_init()
 		instruction_handles[i] = nullptr;
 
 #define BIND(INS_NAME, HANDLE_NAME) ({instruction_handles[INS_NAME] = (void *)handle_##HANDLE_NAME;})
-	BIND(INS_NOP, NOP);	
+	BIND(INS_NOP, NOP);
 
-	BIND(INS_MOVE, MOVE);	
+	BIND(INS_MOVE, MOVE);
 	BIND(INS_ADD, ADD);	
-	BIND(INS_ADDU, ADD);	
-	BIND(INS_ADDIU, ADD);	
-	BIND(INS_SUB, SUB);	
-	BIND(INS_SUBU, SUB);	
-	BIND(INS_SUBIU, SUB);	
-	BIND(INS_MULT, MULT);	
-	BIND(INS_MULTU, MULTU);	
-	BIND(INS_DIV, DIV);	
-	BIND(INS_DIVU, DIV);	
+	BIND(INS_ADDU, ADDU);
+	BIND(INS_ADDIU, ADDU);	
+	BIND(INS_SUB, SUB);
+	BIND(INS_SUBU, SUBU);
+	BIND(INS_SUBIU, SUBU);
+	BIND(INS_MULT, MULT);
+	BIND(INS_MULTU, MULTU);
+	BIND(INS_DIV, DIV);
+	BIND(INS_DIVU, DIVU);
 
-	BIND(INS_LW, LW);	
-	BIND(INS_LH, LH);	
-	BIND(INS_LHU, LHU);	
-	BIND(INS_LB, LH);	
-	BIND(INS_LBU, LBU);	
-	BIND(INS_SW, SW);	
-	BIND(INS_SH, SH);	
-	BIND(INS_SB, SH);	
-	BIND(INS_LUI, LUI);	
+	BIND(INS_LW, LW);
+	BIND(INS_LH, LH);
+	BIND(INS_LHU, LHU);
+	BIND(INS_LB, LB);
+	BIND(INS_LBU, LBU);
+	BIND(INS_SW, SW);
+	BIND(INS_SH, SH);
+	BIND(INS_SB, SB);
+	BIND(INS_LUI, LUI);
 	BIND(INS_MFHI, MFHI);
 	BIND(INS_MFLO, MFLO);
 
-	BIND(INS_AND, AND);	
-	BIND(INS_ANDI, AND);	
-	BIND(INS_OR, OR);	
-	BIND(INS_ORI, OR);	
-	BIND(INS_XOR, XOR);	
-	BIND(INS_XORI, XOR);	
-	BIND(INS_NOR, NOR);	
-	BIND(INS_NORI, NOR);	
-	BIND(INS_SLT, SLT);	
-	BIND(INS_SLTI, SLT);	
-	BIND(INS_SLTU, SLTU);	
-	BIND(INS_SLTIU, SLTU);	
+	BIND(INS_AND, AND);
+	BIND(INS_ANDI, AND);
+	BIND(INS_OR, OR);
+	BIND(INS_ORI, OR);
+	BIND(INS_XOR, XOR);
+	BIND(INS_XORI, XOR);
+	BIND(INS_NOR, NOR);
+	BIND(INS_NORI, NOR);
+	BIND(INS_SLT, SLT);
+	BIND(INS_SLTI, SLT);
+	BIND(INS_SLTU, SLTU);
+	BIND(INS_SLTIU, SLTU);
 
-	BIND(INS_SLL, SLL);	
-	BIND(INS_SLLV, SLL);	
-	BIND(INS_SRL, SRL);	
-	BIND(INS_SRLV, SRL);	
-	BIND(INS_SRA, SRA);	
-	BIND(INS_SRAV, SRA);	
+	BIND(INS_SLL, SLL);
+	BIND(INS_SLLV, SLL);
+	BIND(INS_SRL, SRL);
+	BIND(INS_SRLV, SRL);
+	BIND(INS_SRA, SRA);
+	BIND(INS_SRAV, SRA);
 
-	BIND(INS_BEQ, BEQ);	
-	BIND(INS_BNE, BNE);	
-	BIND(INS_BEQZ, BEQZ);	
-	BIND(INS_BNEZ, BNEZ);	
-	BIND(INS_BLEZ, BLEZ);	
-	BIND(INS_BLTZ, BLTZ);	
-	BIND(INS_BGEZ, BGEZ);	
-	BIND(INS_BGTZ, BGTZ);	
-	BIND(INS_B, J);	
-	BIND(INS_BAL, JAL);	
+	BIND(INS_BEQ, BEQ);
+	BIND(INS_BNE, BNE);
+	BIND(INS_BEQZ, BEQZ);
+	BIND(INS_BNEZ, BNEZ);
+	BIND(INS_BLEZ, BLEZ);
+	BIND(INS_BLTZ, BLTZ);
+	BIND(INS_BGEZ, BGEZ);
+	BIND(INS_BGTZ, BGTZ);
+	BIND(INS_B, J);
+	BIND(INS_BAL, JAL);
 
-	BIND(INS_J, J);	
-	BIND(INS_JR, J);	
-	BIND(INS_JALR, JAL);	
-	BIND(INS_JAL, JAL);	
+	BIND(INS_J, J);
+	BIND(INS_JR, J);
+	BIND(INS_JALR, JAL);
+	BIND(INS_JAL, JAL);
 
 
 
