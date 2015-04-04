@@ -24,6 +24,8 @@ public:
 	//as all readOperand and writeOperand are used in on cpp file(i.e Cpu file, we can use a template methed decalare here, other wise we have to define the function)
 	template <typename T> T readOperand(const cs_mips_op&);
 	template <typename T> void writeOperand(const cs_mips_op&, T value);
+
+	bool cond1;
 	
 private:
 	static void *instruction_handles[INS_ENDING];

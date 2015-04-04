@@ -134,6 +134,12 @@ DEFINE(LBU){WRITEU(0, (uint32_t)READU_1(1)); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(SW){WRITE(1, READ(0)); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(SH){WRITE_2(1, READ_2(0)); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(SB){WRITE_1(1, READ_1(0)); cpu._regs[MIPS_REG_PC] += 4;}
+//unaligned load/store
+DEFINE(LWL){WRITE(0, READ(1));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(LWR){WRITE(0, READ(1));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(SWL){WRITE(1, READ(0));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(SWR){WRITE(1, READ(0));cpu._regs[MIPS_REG_PC] += 4;}
+
 DEFINE(LUI){WRITE(0, READ(1)<<16); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(MFHI){WRITEU(0, cpu._regs[MIPS_REG_HI]); cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(MFLO){WRITEU(0, cpu._regs[MIPS_REG_LO]); cpu._regs[MIPS_REG_PC] += 4;}
@@ -160,6 +166,9 @@ DEFINE(BLTZ){if (READ(0) < 0) cpu._regs[MIPS_REG_PC] = READU(1); else cpu._regs[
 DEFINE(BGEZ){if (READ(0) >= 0) cpu._regs[MIPS_REG_PC] = READU(1); else cpu._regs[MIPS_REG_PC] += 8;}
 DEFINE(BGTZ){if (READ(0) > 0) cpu._regs[MIPS_REG_PC] = READU(1); else cpu._regs[MIPS_REG_PC] += 8;}
 
+DEFINE(BC1T){if (cpu.cond1) cpu._regs[MIPS_REG_PC] = READU(0); else cpu._regs[MIPS_REG_PC] += 8;}
+DEFINE(BC1F){if (!cpu.cond1) cpu._regs[MIPS_REG_PC] = READU(0); else cpu._regs[MIPS_REG_PC] += 8;}
+
 DEFINE(J){cpu._regs[MIPS_REG_PC] = READU(0);}
 DEFINE(JAL){cpu._regs[MIPS_REG_RA] = cpu._regs[MIPS_REG_PC] + 8; cpu._regs[MIPS_REG_PC] = READU(0); }
 
@@ -167,9 +176,22 @@ DEFINE(NOP){cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(MOVE){WRITE(0, READ(1));cpu._regs[MIPS_REG_PC] += 4;}
 
 DEFINE(MTC1){WRITES(0, READS(1));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(LWC1){WRITES(0, READS(1));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(LDC1){WRITED(0, READD(1));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(SWC1){WRITES(1, READS(0));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(SDC1){WRITED(1, READD(0));cpu._regs[MIPS_REG_PC] += 4;}
+
+
+
 DEFINE(CVT_D_W){WRITED(0, (double)READ(1));cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(CVT_D_S){WRITED(0, (double)READS(1));cpu._regs[MIPS_REG_PC] += 4;}
 DEFINE(CVT_S_D){WRITES(0, (float)READD(1));cpu._regs[MIPS_REG_PC] += 4;}
+
+
+DEFINE(DIV_S){WRITES(0, (float)(READD(1)/READS(2)));cpu._regs[MIPS_REG_PC] += 4;}
+DEFINE(DIV_D){WRITED(0, (double)(READD(1)/READD(2)));cpu._regs[MIPS_REG_PC] += 4;}
+
+DEFINE(C_LE_S){cpu.cond1 = (READD(0)<=READD(1));cpu._regs[MIPS_REG_PC] += 4;}
 
 #undef READ
 #undef WRITE
@@ -208,6 +230,12 @@ void Cpu::instruction_handles_init()
 	BIND(INS_SW, SW);
 	BIND(INS_SH, SH);
 	BIND(INS_SB, SB);
+
+	BIND(INS_LWL, LWL);
+	BIND(INS_LWR, LWR);
+	BIND(INS_SWL, SWL);
+	BIND(INS_SWR, SWR);
+
 	BIND(INS_LUI, LUI);
 	BIND(INS_MFHI, MFHI);
 	BIND(INS_MFLO, MFLO);
@@ -243,10 +271,32 @@ void Cpu::instruction_handles_init()
 	BIND(INS_B, J);
 	BIND(INS_BAL, JAL);
 
+	BIND(INS_BC1T, BC1T);
+	BIND(INS_BC1F, BC1F);
+
 	BIND(INS_J, J);
 	BIND(INS_JR, J);
 	BIND(INS_JALR, JAL);
 	BIND(INS_JAL, JAL);
+
+
+
+	BIND(INS_MTC1, MTC1);
+	BIND(INS_LWC1, LWC1);
+	BIND(INS_LDC1, LDC1);
+	BIND(INS_SWC1, SWC1);
+	BIND(INS_SDC1, SDC1);
+
+
+	BIND(INS_CVT_D_W, CVT_D_W);
+	BIND(INS_CVT_D_S, CVT_D_S);
+	BIND(INS_CVT_S_D, CVT_S_D);
+
+
+	BIND(INS_DIV_S, DIV_S);
+	BIND(INS_DIV_D, DIV_D);
+
+	BIND(INS_C_LE_S, C_LE_S);
 
 
 
