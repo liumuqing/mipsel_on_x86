@@ -1,4 +1,5 @@
-* include header files in in this order:
-	* standard header (e.g ```#include <stdin.h>```)
-	* third-party header (e.g ```#include <casptone/caspsone.h>```)
-	* your header (e.g "#include "Cpu.h"")
+* mipsel process level emulator on x86 host
+* install capstone and `make`
+* usage:
+	* `echo "123456" > /tmp/1`
+	* ``./loader `which gzip` /tmp/1`` 
