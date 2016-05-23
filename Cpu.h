@@ -15,11 +15,11 @@ public:
 
 	void execute(const Instruction&);
 
-	void load(uint_t addr, size_t len, uint8_t *buf);
-	void store(uint_t addr, size_t len, const uint8_t *buf);
+	static inline void load(uint_t addr, size_t len, uint8_t *buf);
+	static inline void store(uint_t addr, size_t len, const uint8_t *buf);
 
 	uint_t _regs[MIPS_REG_ENDING+1];
-	uint_t _icount;
+	//uint_t _icount;
 
 	//as all readOperand and writeOperand are used in on cpp file(i.e Cpu file, we can use a template methed decalare here, other wise we have to define the function)
 	template <typename T> T readOperand(const cs_mips_op&);
@@ -32,7 +32,6 @@ private:
 	static bool instruction_handles_inited;
 	static void instruction_handles_init();
 
-
 	std::map<uint_t, Instruction *> _inst_cache;
 	MipsDisassembler _disassembler;
 
@@ -40,7 +39,7 @@ private:
 };
 
 template <typename T>
-void Cpu::writeOperand(const cs_mips_op& operand, T value)
+inline void Cpu::writeOperand(const cs_mips_op& operand, T value)
 {
 	switch (operand.type)
 	{
@@ -51,14 +50,18 @@ void Cpu::writeOperand(const cs_mips_op& operand, T value)
 			ERROR("try to store a value to IMM operand");
 			break;
 		case MIPS_OP_MEM:
-			store(_regs[operand.mem.base] + operand.mem.disp, sizeof(T), (const uint8_t *)&value);
-			break;
+			{
+				T vv = change_endian<T>(value);
+				//store(_regs[operand.mem.base] + operand.mem.disp, sizeof(T), (const uint8_t *)&vv);
+				*(T*)(_regs[operand.mem.base] + operand.mem.disp) = vv;
+				break;
+			}
 		default:
 			ERROR("Unkonw operand type:%d", operand.type);
 	}
 }
 template <typename T>
-T Cpu::readOperand(const cs_mips_op& operand)
+inline T Cpu::readOperand(const cs_mips_op& operand)
 {
 	switch (operand.type)
 	{
@@ -70,8 +73,9 @@ T Cpu::readOperand(const cs_mips_op& operand)
 		{
 			T retv = T();//retv must be initialize as zero
 			ASSERT(sizeof(T)>0);
-			load(_regs[operand.mem.base] + (uint_t)operand.mem.disp, sizeof(T), (uint8_t *)&retv);
-			return retv;
+			//load(_regs[operand.mem.base] + (uint_t)operand.mem.disp, sizeof(T), (uint8_t *)&retv);
+			retv = *(T*)(_regs[operand.mem.base] + operand.mem.disp);
+			return change_endian<T>(retv);
 		}
 	default:
 		ERROR("Unkonw operand type:%d", operand.type);

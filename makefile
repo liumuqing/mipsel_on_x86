@@ -1,5 +1,6 @@
 CC := clang++
-CFLAGS := -g -fPIC -Wall  -std=c++11 -Ofast #-DDEBUG
+DEBUG := -DDEBUG
+CFLAGS := -g -march=native -fPIC -Wall -std=c++11 -Ofast -fno-builtin-memcpy -fno-builtin-strcpy -fno-builtin-strcmp $(DEBUG) #-DBIGENDIAN #-DDEBUG
 TARGET := loader
 SRCS := $(wildcard *.cpp)
 OBJS := $(patsubst %cpp,%o,$(SRCS))
@@ -10,10 +11,10 @@ all: loader
 
 
 %.o:%.cpp
-	$(CC) $(CFLAGS) -c -m32 $< -o $@
+	$(CC) $(CFLAGS) -c -fPIC -m32 $< -o $@
 
 loader:$(OBJS)
-	$(CC) $(CFLAGS) -pie -lcapstone -ldl -m32 -O3 -Wno-c++11-extensions -o $@ $^
+	$(CC) -v $(CFLAGS) -fPIC -pie -lcapstone -ldl -m32 -Ofast -Wno-c++11-extensions -L./  -o $@ $^
 clean:
 	rm -rf *.o
 

@@ -62,6 +62,9 @@ Instruction MipsDisassembler::disassemble(const uint8_t * code_buf, uint_t offse
 	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("div", INS_DIV);
 	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("divu", INS_DIVU);
 
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("negu", INS_NEG);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("neg", INS_NEGU);
+
 	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("lw", INS_LW);
 	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("lh", INS_LH);
 	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("lhu", INS_LHU);
@@ -136,6 +139,18 @@ Instruction MipsDisassembler::disassemble(const uint8_t * code_buf, uint_t offse
 	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("c.le.s", INS_C_LE_S);
 
 
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("teq", INS_TEQ);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("teqi", INS_TEQI);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tge", INS_TGE);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tgei", INS_TGEI);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tgeiu", INS_TGEIU);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tgeu", INS_TGEU);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tlt", INS_TLT);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tlti", INS_TLTI);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tltiu", INS_TLTIU);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tltu", INS_TLTU);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tne", INS_TNE);
+	BIND_MNEMONIC_TO_INSTRUCTION_TYPE("tnei", INS_TNEI);
 
 
 
@@ -145,10 +160,6 @@ Instruction MipsDisassembler::disassemble(const uint8_t * code_buf, uint_t offse
 	{
 		ERROR("[Disassembler] can not dissemble (%s) mips_insn:0x%04x(%04d) %s", all_insn->mnemonic, all_insn->id, all_insn->id, str_of_instruction(retv));
 	}
-
-
-
-
 
 #undef BIND_MNEMONIC_TO_INSTRUCTION_TYPE
 	

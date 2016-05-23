@@ -20,6 +20,9 @@ enum InstructionType
 	INS_DIV,
 	INS_DIVU,
 
+	INS_NEG,
+	INS_NEGU,
+
 	INS_LW,
 	INS_LH,
 	INS_LHU,
@@ -90,6 +93,20 @@ enum InstructionType
 	INS_DIV_D,
 
 	INS_C_LE_S,
+
+
+	INS_TEQ,
+	INS_TEQI,
+	INS_TGE,
+	INS_TGEI,
+	INS_TGEIU,
+	INS_TGEU,
+	INS_TLT,
+	INS_TLTI,
+	INS_TLTIU,
+	INS_TLTU,
+	INS_TNE,
+	INS_TNEI,
 
 
 	INS_ENDING

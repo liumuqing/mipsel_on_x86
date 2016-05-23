@@ -35,15 +35,11 @@ const char * str_of_instruction(const Instruction& inst)
 	snprintf(	buffer_for_str_of_instruction,
 				128,
 #ifdef CONFIG_WITH_MNEMONIC
-				"%32s "
+				"%32s ",
 #endif
-				"type=0x%04x size=0x%04x op_count=%d",
 #ifdef CONFIG_WITH_MNEMONIC
-				temp,
+				temp
 #endif
-				inst.type,
-				inst.size,
-				inst.op_count
 			);
 	return buffer_for_str_of_instruction;
 }

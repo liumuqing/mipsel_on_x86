@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <elf.h>
+#include "elf.h"
 #include "elfio/elfio.hpp"
 
 
@@ -10,8 +10,27 @@
 
 using namespace ELFIO;
 
-void ElfLoader::load(const char * file_path)
+void ElfLoader::load(const char * file_path, bool is_raw, uint_t base_address, uint_t size, uint_t prot)
 {
+	if (is_raw)
+	{
+		FILE * fp = fopen(file_path, "rb");
+		if (!fp) ERROR("error when open file:%s", file_path);
+		if ( base_address != (uint_t)mmap((void *)base_address, size, PROT_WRITE|PROT_READ, MAP_FIXED|MAP_ANONYMOUS|MAP_SHARED, -1, 0))
+			ERROR("can't mmap for raw file");
+		fread((void *)base_address, 1, size, fp);
+		fclose(fp);
+		MAP_t t;
+		t.addr = base_address;
+		t.size = size;
+		t.prot = prot;
+		for (int i = 0; i < (t.size>>COMMON_PAGE_BIT_LEN); i++)
+		{
+			pageTable[(t.addr>>COMMON_PAGE_BIT_LEN) + i] = t.prot;
+		}
+		_MAPs.push_back(t);
+		return;
+	}
 	elfio reader;
 	if (!reader.load(file_path)) ERROR("");
 	INFO("entry_point:%llx", reader.get_entry());
@@ -36,6 +55,10 @@ void ElfLoader::load(const char * file_path)
 			t.addr = v_page_addr;
 			t.size = v_page_size;
 			t.prot = pseg->get_flags();
+			for (int i = 0; i < (t.size>>COMMON_PAGE_BIT_LEN); i++)
+			{
+				pageTable[(t.addr>>COMMON_PAGE_BIT_LEN) + i] = t.prot;
+			}
 			_MAPs.push_back(t);
 		}
 

@@ -1,4 +1,7 @@
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #include <signal.h>
 #include <string.h>
@@ -19,11 +22,13 @@ Instruction ** inst_cache;
 size_t inst_cache_base;
 size_t inst_cache_size;
 
+uint_t fake__stack_stack_guard = 0x12345678;
+
 uint_t create_fake_stack(int argc, char ** argv, char **env, uint_t stack_size = 0x10000)
 {
 	ASSERT(stack_size % 0x1000 == 0);
-	uint_t stack = (uint_t)mmap((void *)0x12340000, stack_size ,PROT_WRITE|PROT_READ, MAP_FIXED|MAP_ANONYMOUS|MAP_SHARED, -1, 0);
-	if (stack != 0x12340000) ERROR("mmap error in create_fake_stack");
+	uint_t stack = (uint_t)mmap((void *)0x22220000, stack_size ,PROT_WRITE|PROT_READ, MAP_FIXED|MAP_ANONYMOUS|MAP_SHARED, -1, 0);
+	if (stack != 0x22220000) ERROR("mmap error in create_fake_stack");
 	INFO("[STACK] fake_stack_address: %p ~ %p", stack + stack_size-1, stack);
 	stack += stack_size;
 /*
@@ -84,12 +89,15 @@ void simulation_loop(Cpu& cpu)
 	while (true)
 	{
 		int i;
+		/*
 		for (i =0; i < loader._MAPs.size(); i++)
 		{
 			if (cpu._regs[MIPS_REG_PC] >= loader._MAPs[i].addr && cpu._regs[MIPS_REG_PC] < loader._MAPs[i].size  + loader._MAPs[i].addr)
 				 break;
 		}
 		if (i == loader._MAPs.size()) return;
+		*/
+		if (loader.pageTable[cpu._regs[MIPS_REG_PC] >> COMMON_PAGE_BIT_LEN] == 0) return;
 		//TODO check whethet PC is excutable
 		ASSERT(cpu._regs[MIPS_REG_PC] % 4 == 0);
 		if (!inst_cache[(cpu._regs[MIPS_REG_PC]-inst_cache_base)/4])
@@ -101,8 +109,8 @@ void simulation_loop(Cpu& cpu)
 			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
 			cpu.execute(inst);
 			uint_t new_PC = cpu._regs[MIPS_REG_PC];
-			if (inst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(inst.operands[0]));
-			if (true)
+			//if (inst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(inst.operands[0]));
+			if (false)
 			{
 				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
 						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
@@ -125,9 +133,9 @@ void simulation_loop(Cpu& cpu)
 			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(nextinst));
 
 			cpu.execute(nextinst);
-			if (nextinst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(nextinst.operands[0]));
+			//if (nextinst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(nextinst.operands[0]));
 
-			if (true)
+			if (false)
 			{
 				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
 						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
@@ -149,16 +157,9 @@ void simulation_loop(Cpu& cpu)
 		else
 		{
 			INFO("%08x %s", cpu._regs[MIPS_REG_PC], str_of_instruction(inst));
-			if (cpu._regs[MIPS_REG_PC] == 0x00413488)
-			{
-				//printf("break!!!");
-				//char buf[1024];
-				//gets(buf);
-				;
-			}
 			cpu.execute(inst);
-			if (inst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(inst.operands[0]));
-			if (true)
+			//if (inst.op_count) INFO("first operand:%08x", cpu.readOperand<uint32_t>(inst.operands[0]));
+			if (false)
 			{
 				INFO("%08x %08x %08x %08x %08x %08x %08x %08x", 
 						cpu._regs[1], cpu._regs[2], cpu._regs[3], cpu._regs[4],
@@ -187,7 +188,7 @@ void start_simulate()
 			if (got_trans_map[cpu._regs[MIPS_REG_PC]] == "exit")
 			{
 				INFO("HOOKED exit");
-				INFO("total execute: 0x%x %d\n", cpu._icount, cpu._icount);
+				//INFO("total execute: 0x%x %d\n", cpu._icount, cpu._icount);
 				_exit(cpu._regs[MIPS_REG_A0]);
 			}
 			INFO("prepare to go into x86 library to addr 0x%08x", cpu._regs[MIPS_REG_PC]);
@@ -198,6 +199,22 @@ void start_simulate()
 				(uint_t (*)(uint_t, uint_t, uint_t, uint_t, uint_t, uint_t, uint_t, uint_t, uint_t, uint_t, uint_t))_func;
 
 			uint_t retaddr = cpu._regs[MIPS_REG_RA];
+
+			if (got_trans_map[cpu._regs[MIPS_REG_PC]] == "open64")
+			{
+				uint_t temp = cpu._regs[MIPS_REG_A1];
+				uint_t a1 = 0;
+				a1 = temp & 0x3;
+				if (temp & 0x0008) a1 |= O_APPEND;
+				if (temp & 0x0010) a1 |= O_SYNC;
+				if (temp & 0x0080) a1 |= O_NONBLOCK;
+				if (temp & 0x0100) a1 |= O_CREAT;
+				if (temp & 0x0200) a1 |= O_TRUNC;
+				if (temp & 0x0400) a1 |= O_EXCL;
+				if (temp & 0x0800) a1 |= O_NOCTTY;
+				cpu._regs[MIPS_REG_A1] = a1;
+
+			}
 			uint_t retv = func(
 					cpu._regs[MIPS_REG_A0],
 					cpu._regs[MIPS_REG_A1],
@@ -211,6 +228,24 @@ void start_simulate()
 					*(uint_t *)(cpu._regs[MIPS_REG_SP] + 36),
 					*(uint_t *)(cpu._regs[MIPS_REG_SP] + 40)
 					);
+			/*
+			if (got_trans_map[cpu._regs[MIPS_REG_PC]] == "__fxstat64" || got_trans_map[cpu._regs[MIPS_REG_PC]] == "__lxstat64"|| got_trans_map[cpu._regs[MIPS_REG_PC]] == "__xstat64" )
+			{
+				struct stat64 s64 = *(struct stat64 *)cpu._regs[MIPS_REG_A2];
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+16, &s64.st_ino, 8);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+24, &s64.st_mode, 4);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+28, &s64.st_nlink, 4);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+32, &s64.st_uid, 4);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+36, &s64.st_gid, 4);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+40, &s64.st_rdev, 4);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+56, &s64.st_size, 8);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+88, &s64.st_blksize, 4);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+96, &s64.st_blocks, 8);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+64, &s64.st_atim, 8);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+72, &s64.st_mtim, 8);
+				memcpy((char*)cpu._regs[MIPS_REG_A2]+80, &s64.st_ctim, 8);
+			}
+			*/
 			cpu._regs[MIPS_REG_PC] = retaddr;
 			cpu._regs[MIPS_REG_V0] = retv;
 			continue;
@@ -224,6 +259,7 @@ void start_simulate()
 
 void handler(int sig, siginfo_t * siginfo, void * ucontext)
 {
+#undef REG
 #define REG(x) ((uint_t) (((ucontext_t *) ucontext)->uc_mcontext.gregs[REG_##x]))
 	int i;
 	INFO("callback from library, target address: %p", REG(EIP));
@@ -308,14 +344,54 @@ int main(int argc, char ** argv, char ** env)
 	sigaction_x86_to_mipsel.sa_restorer = NULL;
 	sigaction(SIGSEGV, &sigaction_x86_to_mipsel, NULL);
 
+	if (argc >= 6 && (argc-3) % 3 == 0 && !strcmp(argv[1], "--"))
+	{
+		uint_t base, size, entry;
 
+		sscanf(argv[2], "0x%08x", &entry);
+		loader.entry_point = entry;
+		INFO("entry: %08x", entry);
 
-	loader.load(argv[1]);
+		uint_t prot = PROT_WRITE|PROT_READ|PROT_EXEC;
+		for (int i = 3; i < argc; i +=3)
+		{
+			sscanf(argv[i+1], "0x%08x", &base);
+			sscanf(argv[i+2], "0x%08x", &size);
+			loader.load(argv[i], true, base, size, prot);
+			INFO("%s %08x %08x", argv[i], base, size);
+			prot = PROT_WRITE|PROT_READ;
+		}
+		cpu._regs[MIPS_REG_SP] = create_fake_stack(argc-1, &argv[1], env);
+		cpu._regs[MIPS_REG_A1] = 1088820;
+		//cpu._regs[MIPS_REG_A1] = 100;
+		cpu._regs[MIPS_REG_A0] = 0x90000000;
+	}
+	else if (argc >= 2 && strcmp(argv[1], "--"))
+	{
+		loader.load(argv[1]);
+		cpu._regs[MIPS_REG_SP] = create_fake_stack(argc-1, &argv[1], env);
+	}
+	else
+	{
+		printf("./loader -- 0xentry file 0xbase 0xsize [file 0xbase 0xsize]\n");
+		printf("./loader elf_file\n");
+		_exit(0);
+	}
+	/*
+	else
+	{
+		printf(	"Usage: \n"
+				"       ./main elfpath arg1 arg2 ...\n"
+				"       ./main -- rawpath base size entry      (all in hex format))\n"
+			 );
+		return 0;
+	}
+	*/
 
 
 	cpu._regs[MIPS_REG_PC] = loader.entry_point;
 	cpu._regs[MIPS_REG_T9] = loader.entry_point;
-	cpu._regs[MIPS_REG_SP] = create_fake_stack(argc-1, &argv[1], env);
+	//cpu._regs[MIPS_REG_SP] = create_fake_stack(argc-1, &argv[1], env);
 
 
 	for (uint_t i = 0; i < loader.FUNCs.size(); i++)
@@ -332,6 +408,10 @@ int main(int argc, char ** argv, char ** env)
 	for (uint_t i = 0; i < loader.OBJECTs.size(); i++)
 	{
 		void * symbol = load_symbol(loader.OBJECTs[i].name.c_str(), loader.needed_libraries);
+		if (!symbol && loader.OBJECTs[i].name == "__stack_chk_guard")
+		{
+			symbol = (void *)&fake__stack_stack_guard; 
+		}
 		if (symbol) //没找到的不要随便乱改。。。got。原来那个地方的值就是可以用的。。
 		{
 			INFO("[OBJECT] %s %08x %08x", loader.OBJECTs[i].name.c_str(), loader.OBJECTs[i].addr, symbol);
@@ -366,6 +446,6 @@ int main(int argc, char ** argv, char ** env)
 	INFO("LOAD OBJECTS finish");
 	INFO("start simulation!!!!");
 	start_simulate();
-	ERROR("[ERROR] execution uncontrolable...");
+	ERROR("[ERROR] execution uncontrolable...with v0:%08x", cpu._regs[MIPS_REG_V0]);
 	return 0;
 }
